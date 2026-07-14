@@ -72,7 +72,7 @@ class EntityProcessor implements ProcessorInterface
                 continue;
             }
 
-            $rows[] = [
+            $row = [
                 'sku' => $sku,
                 'attribute_set_id' => $attributeSetId,
                 'type_id' => $typeId,
@@ -81,6 +81,11 @@ class EntityProcessor implements ProcessorInterface
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
+            if (!$isNew) {
+                // sku is not a unique index; existing rows must conflict on the PK.
+                $row[$this->productEntity->getLinkField()] = $existing[$sku]['link_id'];
+            }
+            $rows[] = $row;
         }
 
         $this->productEntity->upsert($rows);

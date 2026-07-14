@@ -82,6 +82,11 @@ class ProductEntity
      * Multi-row upsert. Rows must contain sku, attribute_set_id, type_id,
      * has_options, required_options, created_at, updated_at.
      *
+     * The sku index is NOT unique in Magento (uniqueness is enforced at the
+     * application level), so rows for existing products MUST include the
+     * link field (entity_id/row_id) — the upsert then conflicts on the
+     * primary key. Rows without it are inserted as new products.
+     *
      * @param array<int, array<string, mixed>> $rows
      */
     public function upsert(array $rows): void
@@ -92,12 +97,23 @@ class ProductEntity
 
         $connection = $this->resourceConnection->getConnection();
         $table = $this->resourceConnection->getTableName(self::TABLE);
-        foreach (array_chunk($rows, self::INSERT_CHUNK) as $chunk) {
-            $connection->insertOnDuplicate(
-                $table,
-                $chunk,
-                ['attribute_set_id', 'type_id', 'updated_at']
-            );
+
+        // insertOnDuplicate derives columns from the first row; new and
+        // existing rows have different shapes, so write them separately.
+        $linkField = $this->getLinkField();
+        $groups = ['new' => [], 'existing' => []];
+        foreach ($rows as $row) {
+            $groups[isset($row[$linkField]) ? 'existing' : 'new'][] = $row;
+        }
+
+        foreach ($groups as $group) {
+            foreach (array_chunk($group, self::INSERT_CHUNK) as $chunk) {
+                $connection->insertOnDuplicate(
+                    $table,
+                    $chunk,
+                    ['attribute_set_id', 'type_id', 'updated_at']
+                );
+            }
         }
     }
 }

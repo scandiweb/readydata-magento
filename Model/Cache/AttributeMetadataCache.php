@@ -6,7 +6,7 @@ declare(strict_types=1);
 
 namespace ReadyData\Import\Model\Cache;
 
-use Magento\Catalog\Api\Data\ProductInterface as CatalogProductInterface;
+use Magento\Catalog\Model\Product;
 use Magento\Framework\App\ResourceConnection;
 
 /**
@@ -90,7 +90,7 @@ class AttributeMetadataCache
             $connection = $this->resourceConnection->getConnection();
             $select = $connection->select()
                 ->from($this->resourceConnection->getTableName('eav_entity_type'), 'entity_type_id')
-                ->where('entity_type_code = ?', CatalogProductInterface::ENTITY);
+                ->where('entity_type_code = ?', Product::ENTITY);
             $this->entityTypeId = (int)$connection->fetchOne($select);
         }
 

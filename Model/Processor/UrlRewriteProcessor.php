@@ -52,7 +52,9 @@ class UrlRewriteProcessor implements ProcessorInterface
             return;
         }
 
-        $allPaths = array_values(array_unique(array_merge(...array_map('array_values', $candidates))));
+        $allPaths = array_values(array_unique(
+            array_merge(...array_values(array_map('array_values', $candidates)))
+        ));
         $conflicts = $this->urlRewriteResource->findConflicts($allPaths, $context->getValidEntityIds());
 
         $rows = [];
