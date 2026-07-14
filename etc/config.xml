@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <readydata_import>
+            <general>
+                <enabled>1</enabled>
+                <batch_size>500</batch_size>
+                <continue_on_error>1</continue_on_error>
+            </general>
+            <behavior>
+                <create_missing_options>1</create_missing_options>
+                <url_rewrite_conflict>append</url_rewrite_conflict>
+            </behavior>
+            <indexing>
+                <mode>partial</mode>
+                <clean_cache>1</clean_cache>
+            </indexing>
+            <logging>
+                <enabled>1</enabled>
+            </logging>
+        </readydata_import>
+    </default>
+</config>

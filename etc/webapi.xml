@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Webapi:etc/webapi.xsd">
+    <!-- Bulk create/update products -->
+    <route url="/V1/readydata/products" method="POST">
+        <service class="ReadyData\Import\Api\ProductImportInterface" method="import"/>
+        <resources>
+            <resource ref="ReadyData_Import::import"/>
+        </resources>
+    </route>
+
+    <!--
+        Placeholders for further expansion:
+
+        <route url="/V1/readydata/products/delete" method="POST">
+            <service class="ReadyData\Import\Api\ProductDeleteInterface" method="delete"/>
+        </route>
+
+        <route url="/V1/readydata/import/:importId/status" method="GET">
+            <service class="ReadyData\Import\Api\ImportStatusInterface" method="getStatus"/>
+        </route>
+    -->
+</routes>

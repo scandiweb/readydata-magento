@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="readydata" translate="label" sortOrder="500">
+            <label>ReadyData</label>
+        </tab>
+        <section id="readydata_import" translate="label" type="text" sortOrder="10"
+                 showInDefault="1" showInWebsite="0" showInStore="0">
+            <label>Product Import</label>
+            <tab>readydata</tab>
+            <resource>ReadyData_Import::config</resource>
+            <group id="general" translate="label" type="text" sortOrder="10" showInDefault="1">
+                <label>General</label>
+                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1">
+                    <label>Enabled</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="batch_size" translate="label comment" type="text" sortOrder="20" showInDefault="1">
+                    <label>Batch Size</label>
+                    <comment>Number of products processed per internal batch/transaction. Default: 500.</comment>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                </field>
+                <field id="continue_on_error" translate="label comment" type="select" sortOrder="30" showInDefault="1">
+                    <label>Continue On Error</label>
+                    <comment>If a batch fails, roll it back and continue with the next batch instead of aborting the request.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+            </group>
+            <group id="behavior" translate="label" type="text" sortOrder="20" showInDefault="1">
+                <label>Import Behavior</label>
+                <field id="create_missing_options" translate="label comment" type="select" sortOrder="10" showInDefault="1">
+                    <label>Auto-Create Missing Attribute Options</label>
+                    <comment>Create select/multiselect option values that do not exist yet.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="url_rewrite_conflict" translate="label comment" type="select" sortOrder="20" showInDefault="1">
+                    <label>URL Rewrite Conflict Strategy</label>
+                    <comment>What to do when a generated URL key is already taken by another entity.</comment>
+                    <source_model>ReadyData\Import\Model\Config\Source\UrlRewriteConflict</source_model>
+                </field>
+            </group>
+            <group id="indexing" translate="label" type="text" sortOrder="30" showInDefault="1">
+                <label>Indexing &amp; Cache</label>
+                <field id="mode" translate="label comment" type="select" sortOrder="10" showInDefault="1">
+                    <label>Reindex Mode</label>
+                    <comment>Partial: reindex only imported products (recommended). Invalidate: mark indexers invalid for cron. None: do nothing.</comment>
+                    <source_model>ReadyData\Import\Model\Config\Source\IndexingMode</source_model>
+                </field>
+                <field id="clean_cache" translate="label comment" type="select" sortOrder="20" showInDefault="1">
+                    <label>Clean Cache For Imported Products</label>
+                    <comment>Flush FPC/block cache tags for touched products only.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+            </group>
+            <group id="logging" translate="label" type="text" sortOrder="40" showInDefault="1">
+                <label>Logging</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10" showInDefault="1">
+                    <label>Enabled</label>
+                    <comment>Writes to var/log/readydata_import.log</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>
