@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 namespace ReadyData\Import\Model\Indexer;
 
+use Magento\Catalog\Model\Category;
 use Magento\Catalog\Model\Product;
 use Magento\Framework\Event\ManagerInterface as EventManager;
 use Magento\Framework\Indexer\CacheContext;
@@ -39,6 +40,7 @@ class InvalidationHandler
         private readonly Logger $logger,
         array $indexerIds = [
             'catalog_product_attribute',
+            'catalog_product_category',
             'catalog_product_price',
             'cataloginventory_stock',
             'inventory',
@@ -49,9 +51,10 @@ class InvalidationHandler
     }
 
     /**
-     * @param int[] $entityIds
+     * @param int[] $entityIds affected product entity IDs
+     * @param int[] $categoryIds categories whose product set changed
      */
-    public function execute(array $entityIds): void
+    public function execute(array $entityIds, array $categoryIds = []): void
     {
         $entityIds = array_values(array_unique($entityIds));
         if (!$entityIds) {
@@ -66,6 +69,12 @@ class InvalidationHandler
 
         if ($this->config->isCleanCache()) {
             $this->cacheContext->registerEntities(Product::CACHE_TAG, $entityIds);
+            if ($categoryIds) {
+                $this->cacheContext->registerEntities(
+                    Category::CACHE_TAG,
+                    array_values(array_unique($categoryIds))
+                );
+            }
             $this->eventManager->dispatch('clean_cache_by_tags', ['object' => $this->cacheContext]);
         }
     }

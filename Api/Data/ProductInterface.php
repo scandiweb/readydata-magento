@@ -26,6 +26,7 @@ interface ProductInterface
     public const WEIGHT = 'weight';
     public const URL_KEY = 'url_key';
     public const WEBSITES = 'websites';
+    public const CATEGORIES = 'categories';
     public const STOCK = 'stock';
     public const CUSTOM_ATTRIBUTES = 'custom_attributes';
     public const CLEAR_ATTRIBUTES = 'clear_attributes';
@@ -149,6 +150,25 @@ interface ProductInterface
      * @return $this
      */
     public function setWebsites(array $websites): self;
+
+    /**
+     * Category assignments. Each entry is either a full category path from
+     * the root category name ("Default Category/Men/Shirts", separator "/")
+     * or a numeric category ID. When present, REPLACES the product's
+     * assignments (an empty array removes them all); null/omitted leaves
+     * them unchanged. Missing path segments below an existing root are
+     * auto-created. Assignments are global (not store-scoped) — send them
+     * on one store pass only.
+     *
+     * @return string[]|null
+     */
+    public function getCategories(): ?array;
+
+    /**
+     * @param string[] $categories
+     * @return $this
+     */
+    public function setCategories(array $categories): self;
 
     /**
      * @return \ReadyData\Import\Api\Data\StockDataInterface|null

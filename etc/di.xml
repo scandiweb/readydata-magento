@@ -41,8 +41,8 @@
                 <item name="websites" xsi:type="object">ReadyData\Import\Model\Processor\WebsiteProcessor</item>
                 <item name="stock" xsi:type="object">ReadyData\Import\Model\Processor\StockProcessor</item>
                 <item name="url_rewrites" xsi:type="object">ReadyData\Import\Model\Processor\UrlRewriteProcessor</item>
-                <!-- Placeholders for further expansion -->
                 <item name="category_links" xsi:type="object">ReadyData\Import\Model\Processor\CategoryLinkProcessor</item>
+                <!-- Placeholders for further expansion -->
                 <item name="media" xsi:type="object">ReadyData\Import\Model\Processor\MediaProcessor</item>
                 <item name="links" xsi:type="object">ReadyData\Import\Model\Processor\LinkProcessor</item>
                 <item name="configurables" xsi:type="object">ReadyData\Import\Model\Processor\ConfigurableProcessor</item>
@@ -54,5 +54,7 @@
     <!-- Request-scoped caches must be shared instances (default), listed here for clarity -->
     <type name="ReadyData\Import\Model\Cache\AttributeMetadataCache" shared="true"/>
     <type name="ReadyData\Import\Model\Cache\StoreWebsiteMap" shared="true"/>
+    <type name="ReadyData\Import\Model\Cache\CategoryPathResolver" shared="true"/>
     <type name="ReadyData\Import\Model\ResourceModel\AttributeOption" shared="true"/>
+    <type name="ReadyData\Import\Model\ResourceModel\Category" shared="true"/>
 </config>

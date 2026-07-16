@@ -26,6 +26,7 @@ Authorization: Bearer <integration token>   (ACL: ReadyData_Import::import)
       "status": 1,
       "visibility": 4,
       "websites": ["base"],
+      "categories": ["Default Category/Men/Shirts", "42"],
       "stock": {"qty": 100, "is_in_stock": true},
       "url_key": "example-product",
       "custom_attributes": [
@@ -54,6 +55,35 @@ cleared at the default scope; when the same attribute is both written and
 cleared, the write wins. Clearing `url_key` does not remove existing URL
 rewrites.
 
+### Category assignments
+
+Each `categories` entry is either a **full category path** from the root
+category name (`"Default Category/Men/Shirts"`, separator `/`) or a
+**numeric category ID** (`"42"`). Semantics are **replace**: when the field
+is present, the product's assignments become exactly the resolved set —
+links not in the payload are removed. `null`/omitted leaves assignments
+untouched; `[]` removes them all.
+
+- Missing path segments **below an existing root** are auto-created (active,
+  in menu, auto-generated `url_key`, name at the default scope). Root
+  categories are never auto-created: an unmatched first segment is a
+  per-product warning, so a typo cannot spawn a new tree. Path segments are
+  matched against admin (store-0) names, trimmed, case-sensitively.
+  Required custom int/select category attributes without a default value are
+  filled with `0` ("No") so validation cannot block creation; required
+  attributes of other types may still block it (per-product warning).
+- Unknown numeric IDs and root-category IDs are skipped with a warning.
+- **Safety valve**: if any of a product's entries fails to resolve, that
+  product is applied additively for the request — new links are inserted,
+  but no existing links are removed (a warning explains this).
+- Only the path leaf is linked; enable `is_anchor` on ancestors for rollup.
+- Position is not settable: new links get position 0, existing links keep
+  their admin-set positions.
+- Assignments are **global** (no store dimension) — send `categories` on one
+  store pass only.
+- `/` cannot be escaped; categories whose name contains `/` must be
+  referenced by numeric ID.
+
 Response: summary counters (`received`, `created`, `updated`, `failed`,
 `elapsedMs`) plus a per-SKU `results` array with `status` and `messages`.
 Errors are per-product; a failing product does not abort the request.
@@ -66,6 +96,8 @@ Errors are per-product; a failing product does not abort the request.
 - Resolves select/multiselect option labels to IDs; auto-creates missing
   options (configurable).
 - Website assignment (additive; new products default to the default website).
+- Category assignments (replace semantics, paths or IDs, auto-creation of
+  missing subtrees — see "Category assignments" above).
 - Stock: legacy `cataloginventory_stock_item` + MSI `inventory_source_item`
   when MSI is installed.
 - URL rewrites: generates `url_key` from the name when absent, regenerates
@@ -85,7 +117,7 @@ reindex mode, cache cleaning, logging.
 
 ## Placeholders (registered, disabled)
 
-Category links, media gallery, related/up-sell/cross-sell links,
+Media gallery, related/up-sell/cross-sell links,
 configurable structure, tier prices — see
 `Model/Processor/*Processor.php` docblocks for the planned scope of each.
 Implement `execute()` and flip `isEnabled()` to activate. Third-party
@@ -96,6 +128,11 @@ steps: implement `ProcessorInterface`, register in `etc/di.xml`
 
 - **Bypasses the product model**: plugins/observers on product save do NOT
   run. That is the point, but audit your customizations before adopting.
+  Exception: **auto-created categories** are saved through the category
+  model/repository (path/level maintenance, url_key, URL rewrites), so
+  category-save plugins and observers DO run for them.
+- Duplicate sibling category names are ambiguous; path resolution picks the
+  lowest entity_id, deterministically.
 - **Adobe Commerce (EE) staging**: updates work; creating new products on a
   staged catalog is not yet supported (clear per-product error is returned).
 - Run indexers in "Update by Schedule" mode for best throughput.

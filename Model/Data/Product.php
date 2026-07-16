@@ -21,6 +21,7 @@ class Product implements ProductInterface
     private ?float $weight = null;
     private ?string $urlKey = null;
     private ?array $websites = null;
+    private ?array $categories = null;
     private ?StockDataInterface $stock = null;
     private ?array $customAttributes = null;
     private ?array $clearAttributes = null;
@@ -132,6 +133,17 @@ class Product implements ProductInterface
     public function setWebsites(array $websites): ProductInterface
     {
         $this->websites = $websites;
+        return $this;
+    }
+
+    public function getCategories(): ?array
+    {
+        return $this->categories;
+    }
+
+    public function setCategories(array $categories): ProductInterface
+    {
+        $this->categories = $categories;
         return $this;
     }
 

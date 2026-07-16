@@ -18,6 +18,7 @@ use ReadyData\Import\Api\Data\ProductInterface;
 use ReadyData\Import\Logger\Logger;
 use ReadyData\Import\Model\Cache\StoreWebsiteMap;
 use ReadyData\Import\Model\Indexer\InvalidationHandler;
+use ReadyData\Import\Model\Processor\CategoryLinkProcessor;
 use ReadyData\Import\Model\Processor\ProcessorInterface;
 
 /**
@@ -103,7 +104,14 @@ class ImportService
                 static fn (BatchContext $c): array => $c->getValidEntityIds(),
                 $contexts
             ));
-            $this->invalidationHandler->execute($affectedIds);
+            // Rolled-back batches may leave category IDs in the data bag;
+            // harmless — at worst an extra cache/index refresh.
+            $affectedCategoryIds = array_merge(...array_map(
+                static fn (BatchContext $c): array =>
+                    $c->get(CategoryLinkProcessor::CONTEXT_AFFECTED_CATEGORY_IDS, []),
+                $contexts
+            ));
+            $this->invalidationHandler->execute($affectedIds, $affectedCategoryIds);
         } finally {
             $this->lockManager->unlock(self::LOCK_NAME);
         }
