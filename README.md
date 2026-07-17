@@ -81,8 +81,12 @@ untouched; `[]` removes them all.
   their admin-set positions.
 - Assignments are **global** (no store dimension) — send `categories` on one
   store pass only.
-- `/` cannot be escaped; categories whose name contains `/` must be
-  referenced by numeric ID.
+- `\` escapes the next character: `\/` is a literal slash inside a name
+  (`"Default Category/Wo\/Men"` names the category `Wo/Men`), `\\` a literal
+  backslash (names containing `\` MUST escape it), and a trailing lone `\`
+  is a literal backslash. A digits-only *name* is referenceable as an
+  escaped segment (`"Default Category/\42"`), while a bare `"42"` entry
+  stays a numeric ID.
 
 Response: summary counters (`received`, `created`, `updated`, `failed`,
 `elapsedMs`) plus a per-SKU `results` array with `status` and `messages`.

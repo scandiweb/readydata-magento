@@ -163,6 +163,46 @@ class CategoryLinkProcessorTest extends TestCase
         $this->processor->process($context);
     }
 
+    public function testEscapedSlashResolvesAsOneSegmentUnderTheCanonicalKey(): void
+    {
+        $context = $this->createContext(['SKU-1' => ['Default Category/Wo\/Men']], ['SKU-1' => 10]);
+
+        $this->pathResolver->method('resolvePaths')
+            ->with(['Default Category/Wo\/Men' => ['Default Category', 'Wo/Men']])
+            ->willReturn(['Default Category/Wo\/Men' => ['id' => 5, 'message' => null]]);
+        $this->pathResolver->method('validateIds')->with([])->willReturn([]);
+        $this->categoryLink->method('getAssignments')->willReturn([]);
+
+        $this->categoryLink->expects(self::once())->method('assign')
+            ->with([['category_id' => 5, 'product_id' => 10, 'position' => 0]]);
+
+        $this->processor->process($context);
+
+        self::assertSame([], $context->getMessages('SKU-1'));
+    }
+
+    public function testEscapedAndUnescapedSlashAreDistinctPaths(): void
+    {
+        $context = $this->createContext(['SKU-1' => ['a\/b', 'a/b']], ['SKU-1' => 10]);
+
+        $this->pathResolver->method('resolvePaths')
+            ->with([
+                'a\/b' => ['a/b'],
+                'a/b' => ['a', 'b'],
+            ])
+            ->willReturn([
+                'a\/b' => ['id' => null, 'message' => 'Cannot assign products to the root category "a/b".'],
+                'a/b' => ['id' => 6, 'message' => null],
+            ]);
+        $this->pathResolver->method('validateIds')->with([])->willReturn([]);
+        $this->categoryLink->method('getAssignments')->willReturn([]);
+
+        $this->categoryLink->expects(self::once())->method('assign')
+            ->with([['category_id' => 6, 'product_id' => 10, 'position' => 0]]);
+
+        $this->processor->process($context);
+    }
+
     /**
      * @param array<string, string[]> $categoriesBySku
      * @param array<string, int> $entityIds

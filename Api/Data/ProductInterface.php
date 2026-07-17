@@ -154,7 +154,9 @@ interface ProductInterface
     /**
      * Category assignments. Each entry is either a full category path from
      * the root category name ("Default Category/Men/Shirts", separator "/")
-     * or a numeric category ID. When present, REPLACES the product's
+     * or a numeric category ID. "/" splits only when unescaped: "\/" is a
+     * literal slash inside a name ("Default Category/Wo\/Men") and "\\" a
+     * literal backslash. When present, REPLACES the product's
      * assignments (an empty array removes them all); null/omitted leaves
      * them unchanged. Missing path segments below an existing root are
      * auto-created. Assignments are global (not store-scoped) — send them

@@ -17,7 +17,9 @@ use ReadyData\Import\Model\ResourceModel\Category as CategoryResource;
  * subtrees. Must stay a shared instance (see di.xml).
  *
  * Paths are matched segment-by-segment against store-0 names (exact match,
- * segments pre-trimmed by PathParser). The first segment must name an
+ * segments pre-decoded and trimmed by PathParser; cache keys use the
+ * escaped canonical form via PathParser::buildKey, so a segment containing
+ * "/" cannot collide with a deeper path). The first segment must name an
  * existing level-1 root — roots are never auto-created, so a typo cannot
  * spawn a new tree. Missing segments below a root are created through the
  * category repository: the model save maintains path/level/children_count,
@@ -207,10 +209,7 @@ class CategoryPathResolver
         $parentId = $walk['parentId'];
 
         for ($i = $walk['depth'], $count = count($walk['segments']); $i < $count; $i++) {
-            $prefixKey = implode(
-                PathParser::SEPARATOR,
-                array_slice($walk['segments'], 0, $i + 1)
-            );
+            $prefixKey = PathParser::buildKey(array_slice($walk['segments'], 0, $i + 1));
 
             // A chain created moments ago by another path may already cover
             // this prefix.
@@ -286,16 +285,15 @@ class CategoryPathResolver
     }
 
     /**
-     * Cache key of the next unresolved prefix of a walk.
+     * Cache key of the next unresolved prefix of a walk — the escaped
+     * canonical form, so segments containing "/" cannot collide with a
+     * deeper path.
      *
      * @param array{segments: string[], depth: int, parentId: int} $walk
      */
     private function prefixKey(array $walk): string
     {
-        return implode(
-            PathParser::SEPARATOR,
-            array_slice($walk['segments'], 0, $walk['depth'] + 1)
-        );
+        return PathParser::buildKey(array_slice($walk['segments'], 0, $walk['depth'] + 1));
     }
 
     /**

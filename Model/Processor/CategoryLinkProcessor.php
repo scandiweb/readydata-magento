@@ -68,7 +68,9 @@ class CategoryLinkProcessor implements ProcessorInterface
                     $uniqueIds[$parsed['id']] = true;
                     $refs['ids'][$parsed['id']] = true;
                 } else {
-                    $key = implode(PathParser::SEPARATOR, $parsed['segments']);
+                    // Escaped canonical key — a plain implode would collide
+                    // ["a/b"] with ["a","b"].
+                    $key = PathParser::buildKey($parsed['segments']);
                     $uniquePaths[$key] = $parsed['segments'];
                     $refs['paths'][$key] = true;
                 }
