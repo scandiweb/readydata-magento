@@ -38,8 +38,9 @@ class Stock
     }
 
     /**
-     * @param array<int, array{product_id: int, qty: float, is_in_stock: int,
-     *        manage_stock: int, use_config_manage_stock: int}> $rows
+     * @param array<int, array<string, mixed>> $rows each keyed by stock item
+     *        column (product_id, qty, is_in_stock, manage_stock and the
+     *        optional field + use_config_* companions)
      */
     public function upsertStockItems(array $rows): void
     {
@@ -59,7 +60,16 @@ class Stock
             $connection->insertOnDuplicate(
                 $table,
                 $chunk,
-                ['qty', 'is_in_stock', 'manage_stock', 'use_config_manage_stock']
+                [
+                    'qty', 'is_in_stock', 'manage_stock', 'use_config_manage_stock',
+                    'min_qty', 'use_config_min_qty',
+                    'min_sale_qty', 'use_config_min_sale_qty',
+                    'max_sale_qty', 'use_config_max_sale_qty',
+                    'qty_increments', 'use_config_qty_increments',
+                    'enable_qty_increments', 'use_config_enable_qty_inc',
+                    'notify_stock_qty', 'use_config_notify_stock_qty',
+                    'backorders', 'use_config_backorders',
+                ]
             );
         }
     }

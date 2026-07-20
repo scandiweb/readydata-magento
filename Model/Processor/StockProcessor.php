@@ -46,6 +46,22 @@ class StockProcessor implements ProcessorInterface
                 'is_in_stock' => (int)$isInStock,
                 'manage_stock' => (int)($manageStock ?? false),
                 'use_config_manage_stock' => $manageStock === null ? 1 : 0,
+                // Optional fields: a null payload value means "use the store
+                // configuration" (use_config_* = 1), mirroring native behavior.
+                'min_qty' => $stock->getMinQty() ?? 0,
+                'use_config_min_qty' => $stock->getMinQty() === null ? 1 : 0,
+                'min_sale_qty' => $stock->getMinSaleQty() ?? 1,
+                'use_config_min_sale_qty' => $stock->getMinSaleQty() === null ? 1 : 0,
+                'max_sale_qty' => $stock->getMaxSaleQty() ?? 0,
+                'use_config_max_sale_qty' => $stock->getMaxSaleQty() === null ? 1 : 0,
+                'qty_increments' => $stock->getQtyIncrements() ?? 0,
+                'use_config_qty_increments' => $stock->getQtyIncrements() === null ? 1 : 0,
+                'enable_qty_increments' => $stock->getQtyIncrements() !== null && $stock->getQtyIncrements() > 0 ? 1 : 0,
+                'use_config_enable_qty_inc' => $stock->getQtyIncrements() === null ? 1 : 0,
+                'notify_stock_qty' => $stock->getNotifyStockQty() ?? 1,
+                'use_config_notify_stock_qty' => $stock->getNotifyStockQty() === null ? 1 : 0,
+                'backorders' => $stock->getBackorders() ?? 0,
+                'use_config_backorders' => $stock->getBackorders() === null ? 1 : 0,
             ];
 
             $sourceItemRows[] = [

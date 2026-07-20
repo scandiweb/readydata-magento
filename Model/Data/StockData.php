@@ -14,6 +14,12 @@ class StockData implements StockDataInterface
     private ?bool $isInStock = null;
     private ?string $sourceCode = null;
     private ?bool $manageStock = null;
+    private ?float $minQty = null;
+    private ?float $minSaleQty = null;
+    private ?float $maxSaleQty = null;
+    private ?float $qtyIncrements = null;
+    private ?float $notifyStockQty = null;
+    private ?int $backorders = null;
 
     public function getQty(): float
     {
@@ -56,6 +62,72 @@ class StockData implements StockDataInterface
     public function setManageStock(bool $manageStock): StockDataInterface
     {
         $this->manageStock = $manageStock;
+        return $this;
+    }
+
+    public function getMinQty(): ?float
+    {
+        return $this->minQty;
+    }
+
+    public function setMinQty(float $minQty): StockDataInterface
+    {
+        $this->minQty = $minQty;
+        return $this;
+    }
+
+    public function getMinSaleQty(): ?float
+    {
+        return $this->minSaleQty;
+    }
+
+    public function setMinSaleQty(float $minSaleQty): StockDataInterface
+    {
+        $this->minSaleQty = $minSaleQty;
+        return $this;
+    }
+
+    public function getMaxSaleQty(): ?float
+    {
+        return $this->maxSaleQty;
+    }
+
+    public function setMaxSaleQty(float $maxSaleQty): StockDataInterface
+    {
+        $this->maxSaleQty = $maxSaleQty;
+        return $this;
+    }
+
+    public function getQtyIncrements(): ?float
+    {
+        return $this->qtyIncrements;
+    }
+
+    public function setQtyIncrements(float $qtyIncrements): StockDataInterface
+    {
+        $this->qtyIncrements = $qtyIncrements;
+        return $this;
+    }
+
+    public function getNotifyStockQty(): ?float
+    {
+        return $this->notifyStockQty;
+    }
+
+    public function setNotifyStockQty(float $notifyStockQty): StockDataInterface
+    {
+        $this->notifyStockQty = $notifyStockQty;
+        return $this;
+    }
+
+    public function getBackorders(): ?int
+    {
+        return $this->backorders;
+    }
+
+    public function setBackorders(int $backorders): StockDataInterface
+    {
+        $this->backorders = $backorders;
         return $this;
     }
 }
