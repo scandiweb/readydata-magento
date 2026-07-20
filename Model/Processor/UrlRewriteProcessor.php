@@ -60,15 +60,23 @@ class UrlRewriteProcessor implements ProcessorInterface
         $rows = [];
         $touchedEntityIds = [];
         $touchedStoreIds = [];
+        // Paths claimed by an earlier product in THIS batch, per store.
+        // findConflicts only inspects the DB (and excludes our own batch
+        // entities), so two same-batch products resolving to the same path
+        // would both pass its check and then collapse into a single row via
+        // insertOnDuplicate — one product silently loses its rewrite. Treat an
+        // already-claimed path as a conflict so it is disambiguated too.
+        $claimed = [];
         foreach ($candidates as $sku => $pathsByStore) {
             $entityId = $context->getEntityId((string)$sku);
             foreach ($pathsByStore as $storeId => $requestPath) {
-                if (isset($conflicts[$storeId][$requestPath])) {
+                if (isset($conflicts[$storeId][$requestPath]) || isset($claimed[$storeId][$requestPath])) {
                     $requestPath = $this->resolveConflict($context, (string)$sku, $storeId, $requestPath, $strategy);
                     if ($requestPath === null) {
                         continue;
                     }
                 }
+                $claimed[$storeId][$requestPath] = true;
                 $rows[] = [
                     'entity_type' => UrlRewrite::ENTITY_TYPE_PRODUCT,
                     'entity_id' => $entityId,
