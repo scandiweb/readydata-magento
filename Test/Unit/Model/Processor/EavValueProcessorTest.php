@@ -10,6 +10,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReadyData\Import\Model\BatchContext;
 use ReadyData\Import\Model\Cache\AttributeMetadataCache;
+use ReadyData\Import\Model\Cache\StoreWebsiteMap;
 use ReadyData\Import\Model\Data\CustomAttribute;
 use ReadyData\Import\Model\Data\Product;
 use ReadyData\Import\Model\Processor\EavValueProcessor;
@@ -46,10 +47,27 @@ class EavValueProcessorTest extends TestCase
             'is_global' => 1,
             'is_required' => 0,
         ],
+        'store_note' => [
+            'attribute_id' => 80,
+            'attribute_code' => 'store_note',
+            'backend_type' => 'varchar',
+            'frontend_input' => 'text',
+            'is_global' => 0,
+            'is_required' => 0,
+        ],
+        'brand' => [
+            'attribute_id' => 81,
+            'attribute_code' => 'brand',
+            'backend_type' => 'varchar',
+            'frontend_input' => 'text',
+            'is_global' => 2,
+            'is_required' => 1,
+        ],
     ];
 
     private AttributeMetadataCache&MockObject $attributeMetadataCache;
     private EavValue&MockObject $eavValue;
+    private StoreWebsiteMap&MockObject $storeWebsiteMap;
     private EavValueProcessor $processor;
 
     /**
@@ -83,12 +101,15 @@ class EavValueProcessorTest extends TestCase
         $productEntity = $this->createMock(ProductEntity::class);
         $productEntity->method('getLinkField')->willReturn('entity_id');
 
+        $this->storeWebsiteMap = $this->createMock(StoreWebsiteMap::class);
+
         $this->processor = new EavValueProcessor(
             $this->attributeMetadataCache,
             $this->createMock(AttributeOption::class),
             $this->eavValue,
             $productEntity,
-            $this->createMock(UrlKeyGenerator::class)
+            $this->createMock(UrlKeyGenerator::class),
+            $this->storeWebsiteMap
         );
     }
 
@@ -210,12 +231,123 @@ class EavValueProcessorTest extends TestCase
         self::assertStringContainsString('the write wins', $context->getMessages('SKU-1')[0]);
     }
 
+    public function testGlobalAttributeWritesDefaultRowRegardlessOfRequestStore(): void
+    {
+        $context = $this->createContext(['special_price' => '9.99'], [], storeId: 3);
+
+        $this->processor->process($context);
+
+        self::assertSame(
+            [['decimal', [
+                ['entity_id' => 10, 'attribute_id' => 77, 'store_id' => 0, 'value' => 9.99],
+            ]]],
+            $this->upserts
+        );
+    }
+
+    public function testStoreScopedAttributeWritesRequestStoreRowOnly(): void
+    {
+        $context = $this->createContext(['store_note' => 'hello'], [], storeId: 3);
+
+        $this->processor->process($context);
+
+        self::assertSame(
+            [['varchar', [
+                ['entity_id' => 10, 'attribute_id' => 80, 'store_id' => 3, 'value' => 'hello'],
+            ]]],
+            $this->upserts
+        );
+    }
+
+    public function testWebsiteScopedAttributeFansOutToAllStoreViewsOfWebsite(): void
+    {
+        $this->storeWebsiteMap->method('getWebsiteStoreIds')->with(3)->willReturn([2, 3, 4]);
+        $context = $this->createContext(['brand' => 'Acme'], [], storeId: 3);
+
+        $this->processor->process($context);
+
+        self::assertSame(
+            [['varchar', [
+                ['entity_id' => 10, 'attribute_id' => 81, 'store_id' => 2, 'value' => 'Acme'],
+                ['entity_id' => 10, 'attribute_id' => 81, 'store_id' => 3, 'value' => 'Acme'],
+                ['entity_id' => 10, 'attribute_id' => 81, 'store_id' => 4, 'value' => 'Acme'],
+            ]]],
+            $this->upserts
+        );
+    }
+
+    public function testWebsiteScopedAttributeAtAdminScopeWritesDefaultRowOnly(): void
+    {
+        $this->storeWebsiteMap->expects(self::never())->method('getWebsiteStoreIds');
+        $context = $this->createContext(['brand' => 'Acme'], [], storeId: 0);
+
+        $this->processor->process($context);
+
+        self::assertSame(
+            [['varchar', [
+                ['entity_id' => 10, 'attribute_id' => 81, 'store_id' => 0, 'value' => 'Acme'],
+            ]]],
+            $this->upserts
+        );
+    }
+
+    public function testNewProductGetsSingleDefaultFallbackRow(): void
+    {
+        $this->storeWebsiteMap->method('getWebsiteStoreIds')->with(3)->willReturn([2, 3]);
+        $context = $this->createContext(['brand' => 'Acme'], [], storeId: 3, existing: false);
+
+        $this->processor->process($context);
+
+        self::assertSame(
+            [['varchar', [
+                ['entity_id' => 10, 'attribute_id' => 81, 'store_id' => 2, 'value' => 'Acme'],
+                ['entity_id' => 10, 'attribute_id' => 81, 'store_id' => 3, 'value' => 'Acme'],
+                ['entity_id' => 10, 'attribute_id' => 81, 'store_id' => 0, 'value' => 'Acme'],
+            ]]],
+            $this->upserts
+        );
+    }
+
+    public function testWebsiteScopedClearDeletesAllStoreViewsOfWebsite(): void
+    {
+        $this->storeWebsiteMap->method('getWebsiteStoreIds')->with(3)->willReturn([2, 3]);
+        $context = $this->createContext([], ['brand'], storeId: 3);
+
+        $this->processor->process($context);
+
+        self::assertSame([], $this->upserts);
+        self::assertSame(
+            [['varchar', [
+                ['link_id' => 10, 'attribute_id' => 81, 'store_id' => 2],
+                ['link_id' => 10, 'attribute_id' => 81, 'store_id' => 3],
+            ]]],
+            $this->deletes
+        );
+        self::assertSame([], $context->getMessages('SKU-1'));
+    }
+
+    public function testRequiredWebsiteScopedAttributeCannotBeClearedAtDefaultScope(): void
+    {
+        $context = $this->createContext([], ['brand'], storeId: 0);
+
+        $this->processor->process($context);
+
+        self::assertSame([], $this->deletes);
+        $messages = $context->getMessages('SKU-1');
+        self::assertCount(1, $messages);
+        self::assertStringContainsString('required and cannot be cleared', $messages[0]);
+    }
+
     /**
      * @param array<string, string> $customAttributes code => value
      * @param string[] $clearAttributes
      */
-    private function createContext(array $customAttributes, array $clearAttributes = []): BatchContext
-    {
+    private function createContext(
+        array $customAttributes,
+        array $clearAttributes = [],
+        int $storeId = 0,
+        bool $existing = true
+    ): BatchContext {
         $product = new Product();
         $product->setSku('SKU-1');
         $product->setCustomAttributes(array_map(
@@ -233,9 +365,11 @@ class EavValueProcessorTest extends TestCase
             $product->setClearAttributes($clearAttributes);
         }
 
-        $context = new BatchContext([$product]);
+        $context = new BatchContext([$product], $storeId);
         $context->set(EntityProcessor::CONTEXT_LINK_IDS, ['SKU-1' => 10]);
-        $context->markExisting('SKU-1');
+        if ($existing) {
+            $context->markExisting('SKU-1');
+        }
 
         return $context;
     }

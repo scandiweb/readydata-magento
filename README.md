@@ -40,14 +40,31 @@ Authorization: Bearer <integration token>   (ACL: ReadyData_Import::import)
 }
 ```
 
+### Attribute value scoping
+
+Values are written in the scope each attribute is configured with, keyed off
+the request's `store_view_code` (absent/`admin` = default scope):
+
+- **Global** (`is_global = 1`): always written at store 0, whatever the
+  request scope.
+- **Website** (`is_global = 2`): written to **every store view of the
+  website** containing the request's store view (including inactive views),
+  mirroring core Magento's website-scope emulation. At the default scope,
+  only the store-0 row is written.
+- **Store view** (`is_global = 0`): written at the request's store view only.
+
+New products additionally get a store-0 fallback row for non-global values.
+
 ### Clearing attribute values
 
 A `null` (or absent) value in `custom_attributes` means **leave unchanged** —
 safe for sparse feeds. To actually remove a stored value, list the attribute
-code in `clear_attributes`. A clear DELETEs the EAV value row in the same
-scope a write would target: global attributes at the default scope,
-store-scoped attributes at the request's `store_view_code` (a cleared store
-row falls back to the default value, like "Use Default" in the admin).
+code in `clear_attributes`. A clear DELETEs the EAV value rows in the same
+scope a write would target (see "Attribute value scoping"): global attributes
+at the default scope, website-scoped attributes across all store views of the
+request store's website, store-scoped attributes at the request's
+`store_view_code` (a cleared store row falls back to the default value, like
+"Use Default" in the admin).
 
 Guards (each a per-product warning in `results[].messages`, never fatal):
 unknown and static attributes are skipped; required attributes cannot be
@@ -142,10 +159,10 @@ steps: implement `ProcessorInterface`, register in `etc/di.xml`
   datetime and non-numeric decimal values are skipped with a per-SKU
   message, never written. No cross-field checks (e.g. `special_from_date`
   vs `special_to_date`) — validate windows at the source.
-- Attribute scope handling only distinguishes global (`is_global = 1`,
-  written at store 0) from store-view scope. Website-scoped attributes
-  (e.g. prices under "Catalog Price Scope: Website") are written at the
-  request's store-view scope, not fanned out per website.
+- Website-scoped attributes (e.g. prices under "Catalog Price Scope:
+  Website") are fanned out to all store views of the request store's
+  website — one value row per view, like core. Sending them on one store
+  view per website is enough; other websites keep their own values.
 - **Adobe Commerce (EE) staging**: updates work; creating new products on a
   staged catalog is not yet supported (clear per-product error is returned).
 - Run indexers in "Update by Schedule" mode for best throughput.

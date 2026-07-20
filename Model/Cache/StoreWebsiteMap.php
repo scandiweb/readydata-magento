@@ -18,6 +18,7 @@ class StoreWebsiteMap
     private ?array $storeIdByCode = null;
     private ?array $websiteIdByCode = null;
     private ?array $storeIdsByWebsiteId = null;
+    private ?array $websiteStoreIds = null;
     private ?int $defaultWebsiteId = null;
 
     public function __construct(
@@ -104,6 +105,35 @@ class StoreWebsiteMap
         }
 
         return array_values(array_unique(array_merge(...$storeIds ?: [[]])));
+    }
+
+    /**
+     * All store view IDs of the website containing the given store view,
+     * including the view itself and inactive views (website-scoped values
+     * must not go stale on views activated later).
+     *
+     * @return int[]
+     */
+    public function getWebsiteStoreIds(int $storeId): array
+    {
+        if ($this->websiteStoreIds === null) {
+            $connection = $this->resourceConnection->getConnection();
+            $select = $connection->select()
+                ->from($this->resourceConnection->getTableName('store'), ['website_id', 'store_id'])
+                ->where('store_id > 0');
+            $storeIdsByWebsiteId = [];
+            $websiteIdByStoreId = [];
+            foreach ($connection->fetchAll($select) as $row) {
+                $storeIdsByWebsiteId[(int)$row['website_id']][] = (int)$row['store_id'];
+                $websiteIdByStoreId[(int)$row['store_id']] = (int)$row['website_id'];
+            }
+            $this->websiteStoreIds = [];
+            foreach ($websiteIdByStoreId as $id => $websiteId) {
+                $this->websiteStoreIds[$id] = $storeIdsByWebsiteId[$websiteId];
+            }
+        }
+
+        return $this->websiteStoreIds[$storeId] ?? [$storeId];
     }
 
     /**

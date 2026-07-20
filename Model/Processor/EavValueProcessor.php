@@ -9,6 +9,7 @@ namespace ReadyData\Import\Model\Processor;
 use ReadyData\Import\Api\Data\ProductInterface;
 use ReadyData\Import\Model\BatchContext;
 use ReadyData\Import\Model\Cache\AttributeMetadataCache;
+use ReadyData\Import\Model\Cache\StoreWebsiteMap;
 use ReadyData\Import\Model\ResourceModel\AttributeOption;
 use ReadyData\Import\Model\ResourceModel\EavValue;
 use ReadyData\Import\Model\ResourceModel\ProductEntity;
@@ -27,13 +28,15 @@ class EavValueProcessor implements ProcessorInterface
     public const CONTEXT_URL_KEYS = 'url_keys';
 
     private const SCOPE_GLOBAL = 1;
+    private const SCOPE_WEBSITE = 2;
 
     public function __construct(
         private readonly AttributeMetadataCache $attributeMetadataCache,
         private readonly AttributeOption $attributeOption,
         private readonly EavValue $eavValue,
         private readonly ProductEntity $productEntity,
-        private readonly UrlKeyGenerator $urlKeyGenerator
+        private readonly UrlKeyGenerator $urlKeyGenerator,
+        private readonly StoreWebsiteMap $storeWebsiteMap
     ) {
     }
 
@@ -77,19 +80,16 @@ class EavValueProcessor implements ProcessorInterface
                     continue;
                 }
 
-                $storeId = $meta['is_global'] === self::SCOPE_GLOBAL ? 0 : $context->getStoreId();
-                $rowsByType[$meta['backend_type']][] = [
-                    $linkField => $linkId,
-                    'attribute_id' => $meta['attribute_id'],
-                    'store_id' => $storeId,
-                    'value' => $value,
-                ];
+                $storeIds = $this->resolveScopeStoreIds($meta, $context);
                 // New products always need a default-scope fallback row.
-                if ($storeId !== 0 && !$context->isExisting($sku)) {
+                if (!in_array(0, $storeIds, true) && !$context->isExisting($sku)) {
+                    $storeIds[] = 0;
+                }
+                foreach ($storeIds as $storeId) {
                     $rowsByType[$meta['backend_type']][] = [
                         $linkField => $linkId,
                         'attribute_id' => $meta['attribute_id'],
-                        'store_id' => 0,
+                        'store_id' => $storeId,
                         'value' => $value,
                     ];
                 }
@@ -144,20 +144,43 @@ class EavValueProcessor implements ProcessorInterface
                 );
                 continue;
             }
-            $storeId = $meta['is_global'] === self::SCOPE_GLOBAL ? 0 : $context->getStoreId();
-            if ($storeId === 0 && $meta['is_required'] === 1) {
+            $storeIds = $this->resolveScopeStoreIds($meta, $context);
+            if (in_array(0, $storeIds, true) && $meta['is_required'] === 1) {
                 $context->addMessage(
                     $product->getSku(),
                     sprintf('Attribute "%s" is required and cannot be cleared at default scope.', $code)
                 );
                 continue;
             }
-            $deleteKeysByType[$meta['backend_type']][] = [
-                'link_id' => $linkId,
-                'attribute_id' => $meta['attribute_id'],
-                'store_id' => $storeId,
-            ];
+            foreach ($storeIds as $storeId) {
+                $deleteKeysByType[$meta['backend_type']][] = [
+                    'link_id' => $linkId,
+                    'attribute_id' => $meta['attribute_id'],
+                    'store_id' => $storeId,
+                ];
+            }
         }
+    }
+
+    /**
+     * Store IDs a value (or clear) applies to under the attribute's scope:
+     * global => default row only; website => every store view of the request
+     * store's website (the value tables have no website dimension, so website
+     * scope is emulated by fanning out per view, as core does); store => the
+     * request store view only.
+     *
+     * @return int[]
+     */
+    private function resolveScopeStoreIds(array $meta, BatchContext $context): array
+    {
+        if ($meta['is_global'] === self::SCOPE_GLOBAL || $context->getStoreId() === 0) {
+            return [0];
+        }
+        if ($meta['is_global'] === self::SCOPE_WEBSITE) {
+            return $this->storeWebsiteMap->getWebsiteStoreIds($context->getStoreId());
+        }
+
+        return [$context->getStoreId()];
     }
 
     /**
