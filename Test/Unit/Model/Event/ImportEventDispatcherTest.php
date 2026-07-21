@@ -96,16 +96,11 @@ class ImportEventDispatcherTest extends TestCase
 
     public function testNoEventsWhenDispatchDisabled(): void
     {
+        // Master switch off beats the save-after toggle being on.
         $config = $this->createMock(Config::class);
         $config->method('isDispatchProductEvents')->willReturn(false);
-        $dispatcher = new ImportEventDispatcher(
-            $this->productFactory,
-            $this->eventManager,
-            $this->productEntity,
-            $config,
-            $this->logger,
-            true
-        );
+        $config->method('isDispatchSaveAfter')->willReturn(true);
+        $dispatcher = $this->newDispatcher($config);
 
         $context = $this->createContext(['SKU-A' => 1], existing: []);
         $dispatcher->dispatchBeforeCommit($context);
@@ -118,10 +113,15 @@ class ImportEventDispatcherTest extends TestCase
     {
         $context = $this->createContext(['SKU-A' => 1], existing: []);
 
-        $this->newDispatcher(saveAfter: false)->dispatchBeforeCommit($context);
+        // Default config (setUp): events on, save-after off → nothing.
+        $this->newDispatcher()->dispatchBeforeCommit($context);
         self::assertSame([], $this->eventsNamed('catalog_product_save_after'));
 
-        $this->newDispatcher(saveAfter: true)->dispatchBeforeCommit($context);
+        // Both on → the in-transaction save_after events fire per product.
+        $config = $this->createMock(Config::class);
+        $config->method('isDispatchProductEvents')->willReturn(true);
+        $config->method('isDispatchSaveAfter')->willReturn(true);
+        $this->newDispatcher($config)->dispatchBeforeCommit($context);
         self::assertCount(1, $this->eventsNamed('catalog_product_save_after'));
         self::assertCount(1, $this->eventsNamed('model_save_after'));
     }
@@ -162,8 +162,7 @@ class ImportEventDispatcherTest extends TestCase
             $eventManager,
             $this->productEntity,
             $this->config,
-            $this->logger,
-            false
+            $this->logger
         );
 
         // Must not throw.
@@ -192,8 +191,7 @@ class ImportEventDispatcherTest extends TestCase
             $eventManager,
             $this->productEntity,
             $this->config,
-            $this->logger,
-            false
+            $this->logger
         );
 
         // SKU-BAD is processed first and throws; SKU-GOOD must still fire.
@@ -202,15 +200,14 @@ class ImportEventDispatcherTest extends TestCase
         self::assertContains('SKU-GOOD', $recorded);
     }
 
-    private function newDispatcher(bool $saveAfter = false): ImportEventDispatcher
+    private function newDispatcher(?Config $config = null): ImportEventDispatcher
     {
         return new ImportEventDispatcher(
             $this->productFactory,
             $this->eventManager,
             $this->productEntity,
-            $this->config,
-            $this->logger,
-            $saveAfter
+            $config ?? $this->config,
+            $this->logger
         );
     }
 

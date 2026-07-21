@@ -32,6 +32,7 @@ class Config
     private const XML_PATH_CLEAN_CACHE = 'readydata_import/indexing/clean_cache';
     private const XML_PATH_LOGGING_ENABLED = 'readydata_import/logging/enabled';
     private const XML_PATH_DISPATCH_PRODUCT_EVENTS = 'readydata_import/events/dispatch_product_events';
+    private const XML_PATH_DISPATCH_SAVE_AFTER = 'readydata_import/events/dispatch_save_after';
 
     public function __construct(
         private readonly ScopeConfigInterface $scopeConfig
@@ -89,5 +90,16 @@ class Config
     public function isDispatchProductEvents(): bool
     {
         return $this->scopeConfig->isSetFlag(self::XML_PATH_DISPATCH_PRODUCT_EVENTS);
+    }
+
+    /**
+     * Whether to additionally fire the in-transaction catalog_product_save_after
+     * event per product. Gated by {@see isDispatchProductEvents()} at the call
+     * site; heavier than the commit-after events and a throwing observer rolls
+     * the batch back.
+     */
+    public function isDispatchSaveAfter(): bool
+    {
+        return $this->scopeConfig->isSetFlag(self::XML_PATH_DISPATCH_SAVE_AFTER);
     }
 }

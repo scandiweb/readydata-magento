@@ -52,16 +52,12 @@
     </type>
 
     <!--
-        Event dispatch. dispatchSaveAfter is a developer-only toggle:
-        set it to true to also fire catalog_product_save_after per product. When on,
-        the native URL-rewrite/inventory observers are suppressed for the duration of
-        the import (see the plugins below) so they never double-write.
+        Event dispatch is configured under Stores > Configuration > ReadyData >
+        Product Import > Events. When the "Also Dispatch catalog_product_save_after"
+        setting is on, the native URL-rewrite/inventory observers are suppressed
+        for the duration of the import (see the plugins below) so they never
+        double-write.
     -->
-    <type name="ReadyData\Import\Model\Event\ImportEventDispatcher">
-        <arguments>
-            <argument name="dispatchSaveAfter" xsi:type="boolean">false</argument>
-        </arguments>
-    </type>
 
     <!-- Import-active flag consulted by the observer-suppression plugins; must be shared -->
     <type name="ReadyData\Import\Model\ImportState" shared="true"/>

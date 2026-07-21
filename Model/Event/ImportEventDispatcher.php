@@ -29,9 +29,10 @@ use ReadyData\Import\Model\ResourceModel\ProductEntity;
  * Timing mirrors core: {@see catalog_product_save_after} is dispatched inside
  * the batch transaction (before commit); {@see catalog_product_save_commit_after}
  * after it. Per-product `catalog_product_save_after` is off by default and
- * enabled only via the $dispatchSaveAfter constructor toggle (di.xml, no admin
- * UI) — when on, the conflicting native observers are suppressed for the
- * duration of the import (see Plugin/) so they never double-write.
+ * enabled via the "Also Dispatch catalog_product_save_after" admin setting
+ * ({@see Config::isDispatchSaveAfter()}) — when on, the conflicting native
+ * observers are suppressed for the duration of the import (see Plugin/) so they
+ * never double-write.
  */
 class ImportEventDispatcher
 {
@@ -44,19 +45,20 @@ class ImportEventDispatcher
         private readonly EventManager $eventManager,
         private readonly ProductEntity $productEntity,
         private readonly Config $config,
-        private readonly Logger $logger,
-        private readonly bool $dispatchSaveAfter = false
+        private readonly Logger $logger
     ) {
     }
 
     /**
-     * Fire the in-transaction `*_save_after` events. No-op unless the in-code
-     * toggle is enabled. Runs inside the batch transaction, so a throwing
-     * observer must propagate and roll the batch back (core semantics).
+     * Fire the in-transaction `*_save_after` events per product. No-op unless
+     * both the master event switch and the "Also Dispatch
+     * catalog_product_save_after" setting are enabled. Runs inside the batch
+     * transaction, so a throwing observer must propagate and roll the batch
+     * back (core semantics).
      */
     public function dispatchBeforeCommit(BatchContext $context): void
     {
-        if (!$this->dispatchSaveAfter || !$this->config->isDispatchProductEvents()) {
+        if (!$this->config->isDispatchProductEvents() || !$this->config->isDispatchSaveAfter()) {
             return;
         }
 

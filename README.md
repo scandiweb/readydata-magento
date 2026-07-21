@@ -134,7 +134,30 @@ Errors are per-product; a failing product does not abort the request.
 
 Stores → Configuration → ReadyData → Product Import: enable/disable, batch
 size, continue-on-error, option auto-creation, URL conflict strategy,
-reindex mode, cache cleaning, logging.
+reindex mode, cache cleaning, event dispatch, logging.
+
+### Events
+
+Because the importer writes directly to the database, none of the usual
+product-save events fire on their own. The **Events** group re-emits them so
+third-party observers still react to imports:
+
+- **Dispatch Product Save Events** (`dispatch_product_events`, default on) —
+  after each committed batch, re-emit `catalog_product_save_commit_after`
+  (and the custom `readydata_import_*` events) per product. These run
+  **after** the batch transaction commits, so a throwing observer is logged
+  and swallowed rather than rolling the import back.
+- **Also Dispatch catalog_product_save_after** (`dispatch_save_after`,
+  default off) — additionally fire `catalog_product_save_after` per product
+  **inside** the batch transaction, mirroring core's save timing. This is
+  heavier than the commit-after events and, because it runs pre-commit, a
+  **throwing observer rolls the whole batch back**. Only enable it when a
+  specific third-party observer must run on this in-transaction event.
+  Depends on "Dispatch Product Save Events" being on.
+
+Whenever product-save events are dispatched, the module suppresses Magento's
+own URL-rewrite and inventory save observers for the duration of the import
+(they are re-implemented in bulk by the pipeline), so they never double-write.
 
 ## Placeholders (registered, disabled)
 

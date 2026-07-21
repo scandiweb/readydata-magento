@@ -57,8 +57,16 @@
                 <label>Events</label>
                 <field id="dispatch_product_events" translate="label comment" type="select" sortOrder="10" showInDefault="1">
                     <label>Dispatch Product Save Events</label>
-                    <comment>Re-emit catalog_product_save_commit_after (and the readydata_import_* events) after each imported batch so third-party observers react to imports. The additional catalog_product_save_after mode is a developer-only di.xml toggle, not exposed here.</comment>
+                    <comment>Re-emit catalog_product_save_commit_after (and the readydata_import_* events) after each imported batch so third-party observers react to imports.</comment>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="dispatch_save_after" translate="label comment" type="select" sortOrder="20" showInDefault="1">
+                    <label>Also Dispatch catalog_product_save_after</label>
+                    <comment>Additionally fire catalog_product_save_after per product, inside the batch transaction. Slower and heavier than the commit-after events above, and a throwing observer rolls the whole batch back. Only enable if a third-party observer must run on this in-transaction event. The native URL-rewrite/inventory observers are suppressed during import either way. Requires "Dispatch Product Save Events".</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <field id="dispatch_product_events">1</field>
+                    </depends>
                 </field>
             </group>
             <group id="logging" translate="label" type="text" sortOrder="40" showInDefault="1">
