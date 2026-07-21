@@ -117,6 +117,11 @@ class UrlRewriteProcessor implements ProcessorInterface
         $hasCategoryRows = false;
         foreach (array_merge($canonical, $category) as $candidate) {
             $sku = $candidate['sku'];
+            // A SKU failed during conflict resolution (error strategy) must not
+            // still receive its remaining (e.g. category-path) rewrites.
+            if ($context->isFailed($sku)) {
+                continue;
+            }
             $storeId = $candidate['store_id'];
             $requestPath = $candidate['request_path'];
             if (isset($conflicts[$storeId][$requestPath]) || isset($claimed[$storeId][$requestPath])) {
@@ -145,7 +150,12 @@ class UrlRewriteProcessor implements ProcessorInterface
         if ($rows) {
             $rows = array_merge(
                 $rows,
-                $this->buildRedirects(array_keys($touchedEntityIds), array_keys($touchedStoreIds), $finalByKey)
+                $this->buildRedirects(
+                    array_keys($touchedEntityIds),
+                    array_keys($touchedStoreIds),
+                    $finalByKey,
+                    $claimed
+                )
             );
             $this->urlRewriteResource->replaceProductRewrites(
                 array_keys($touchedEntityIds),
@@ -239,9 +249,11 @@ class UrlRewriteProcessor implements ProcessorInterface
      * @param int[] $storeIds
      * @param array<int, array<int, array<int|string, string>>> $finalByKey
      *        entity_id => store_id => category_key => new request path
+     * @param array<int, array<string, true>> $claimed store_id => set of request paths
+     *        written this batch as live rewrites
      * @return array<int, array<string, mixed>>
      */
-    private function buildRedirects(array $entityIds, array $storeIds, array $finalByKey): array
+    private function buildRedirects(array $entityIds, array $storeIds, array $finalByKey, array $claimed): array
     {
         $historyStores = array_values(array_filter(
             $storeIds,
@@ -256,6 +268,12 @@ class UrlRewriteProcessor implements ProcessorInterface
             $key = $this->categoryKeyFromMetadata($old['metadata']);
             $newPath = $finalByKey[$old['entity_id']][$old['store_id']][$key] ?? null;
             if ($newPath === null || $newPath === $old['request_path']) {
+                continue;
+            }
+            // The old path was re-claimed as a live rewrite this batch (e.g.
+            // another product adopted the freed url_key) — do not shadow it
+            // with a 301, which would overwrite that product's rewrite.
+            if (isset($claimed[$old['store_id']][$old['request_path']])) {
                 continue;
             }
             $redirects[] = [

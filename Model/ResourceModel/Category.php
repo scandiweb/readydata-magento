@@ -27,6 +27,8 @@ class Category
      */
     private array $attributeIdByCode = [];
 
+    private ?bool $isAnchorDefault = null;
+
     public function __construct(
         private readonly ResourceConnection $resourceConnection,
         private readonly MetadataPool $metadataPool
@@ -259,7 +261,9 @@ class Category
     }
 
     /**
-     * is_anchor flag per category (store-0 scope).
+     * is_anchor flag per category (store-0 scope). Categories with no stored
+     * row fall back to the attribute's default value, matching how a loaded
+     * category model resolves the flag.
      *
      * @param int[] $categoryIds
      * @return array<int, bool> entity_id => is_anchor
@@ -272,12 +276,14 @@ class Category
 
         $connection = $this->resourceConnection->getConnection();
         $linkField = $this->getLinkField();
+        // LEFT join so categories relying on the attribute default (no stored
+        // row) are still returned; COALESCE to the default value.
         $select = $connection->select()
             ->from(
                 ['e' => $this->resourceConnection->getTableName(self::ENTITY_TABLE)],
                 ['entity_id']
             )
-            ->join(
+            ->joinLeft(
                 ['v' => $this->resourceConnection->getTableName(self::ENTITY_TABLE . '_int')],
                 sprintf('v.%1$s = e.%1$s', $linkField)
                 . ' AND v.attribute_id = ' . $this->getAttributeId('is_anchor')
@@ -286,12 +292,41 @@ class Category
             )
             ->where('e.entity_id IN (?)', $categoryIds);
 
+        $default = $this->getIsAnchorDefault();
         $result = [];
         foreach ($connection->fetchAll($select) as $row) {
-            $result[(int)$row['entity_id']] = (bool)(int)$row['value'];
+            $result[(int)$row['entity_id']] = $row['value'] !== null
+                ? (bool)(int)$row['value']
+                : $default;
         }
 
         return $result;
+    }
+
+    /**
+     * Default value of the category is_anchor attribute (false when unset).
+     */
+    private function getIsAnchorDefault(): bool
+    {
+        if ($this->isAnchorDefault !== null) {
+            return $this->isAnchorDefault;
+        }
+
+        $connection = $this->resourceConnection->getConnection();
+        $select = $connection->select()
+            ->from(
+                ['a' => $this->resourceConnection->getTableName('eav_attribute')],
+                ['default_value']
+            )
+            ->join(
+                ['t' => $this->resourceConnection->getTableName('eav_entity_type')],
+                't.entity_type_id = a.entity_type_id',
+                []
+            )
+            ->where('t.entity_type_code = ?', CategoryModel::ENTITY)
+            ->where('a.attribute_code = ?', 'is_anchor');
+
+        return $this->isAnchorDefault = (bool)(int)$connection->fetchOne($select);
     }
 
     /**

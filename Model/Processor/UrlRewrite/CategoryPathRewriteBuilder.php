@@ -46,10 +46,17 @@ class CategoryPathRewriteBuilder
         $anchorIds = $this->collectAncestorIds($ancestry);
         $allIds = array_values(array_unique(array_merge($assignedIds, $anchorIds)));
 
-        $levels = array_map(
-            static fn (array $row): int => $row['level'],
-            $this->categoryResource->getExistingByIds($allIds)
-        );
+        // Levels for assigned categories come from the ancestry lookup already;
+        // only the anchor ancestors need a second fetch.
+        $levels = [];
+        foreach ($ancestry as $id => $entry) {
+            $levels[$id] = $entry['level'];
+        }
+        $anchorLevelIds = array_values(array_diff($anchorIds, array_keys($ancestry)));
+        foreach ($this->categoryResource->getExistingByIds($anchorLevelIds) as $id => $row) {
+            $levels[$id] = $row['level'];
+        }
+
         $urlPaths = $this->categoryResource->getUrlPaths($allIds, $storeId);
         $isAnchor = $this->categoryResource->getIsAnchor($anchorIds);
 

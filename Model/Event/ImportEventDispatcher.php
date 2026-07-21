@@ -80,22 +80,26 @@ class ImportEventDispatcher
             return;
         }
 
-        // Two guarded sections: a throwing third-party save_commit_after observer
-        // must neither fail the (already committed) import nor suppress the
-        // module's own readydata_import_* notifications.
-        try {
-            foreach ($this->buildProducts($context) as $product) {
+        // Guard per product so a throwing third-party save_commit_after observer
+        // neither fails the (already committed) import nor suppresses the
+        // remaining products' events; the custom events are guarded separately.
+        foreach ($this->buildProducts($context) as $product) {
+            try {
                 $this->eventManager->dispatch('model_save_commit_after', ['object' => $product]);
                 $this->eventManager->dispatch(
                     'catalog_product_save_commit_after',
                     ['data_object' => $product, 'product' => $product]
                 );
+            } catch (\Throwable $e) {
+                $this->logger->error(
+                    sprintf(
+                        'Post-commit product event dispatch failed for "%s": %s',
+                        $product->getSku(),
+                        $e->getMessage()
+                    ),
+                    ['exception' => $e]
+                );
             }
-        } catch (\Throwable $e) {
-            $this->logger->error(
-                sprintf('Post-commit product event dispatch failed: %s', $e->getMessage()),
-                ['exception' => $e]
-            );
         }
 
         try {
@@ -165,6 +169,7 @@ class ImportEventDispatcher
     private function buildProducts(BatchContext $context): array
     {
         $linkIds = $context->get(EntityProcessor::CONTEXT_LINK_IDS, []);
+        $typeIds = $context->get(EntityProcessor::CONTEXT_TYPE_IDS, []);
         $linkField = $this->productEntity->getLinkField();
         $products = [];
 
@@ -179,7 +184,8 @@ class ImportEventDispatcher
                 $dto,
                 $entityId,
                 $linkField,
-                isset($linkIds[$sku]) ? (int)$linkIds[$sku] : $entityId
+                isset($linkIds[$sku]) ? (int)$linkIds[$sku] : $entityId,
+                $typeIds[$sku] ?? ($dto->getTypeId() ?: 'simple')
             );
         }
 
@@ -192,7 +198,8 @@ class ImportEventDispatcher
         ProductInterface $dto,
         int $entityId,
         string $linkField,
-        int $linkId
+        int $linkId,
+        string $typeId
     ): Product {
         /** @var Product $product */
         $product = $this->productFactory->create();
@@ -203,7 +210,7 @@ class ImportEventDispatcher
         }
         $product->setData('sku', $sku);
         $product->setStoreId($context->getStoreId());
-        $product->setData('type_id', $dto->getTypeId() ?: 'simple');
+        $product->setData('type_id', $typeId);
 
         $scalars = [
             'name' => $dto->getName(),

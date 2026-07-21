@@ -170,6 +170,38 @@ class ImportEventDispatcherTest extends TestCase
         $dispatcher->dispatchAfterCommit($this->createContext(['SKU-A' => 1], existing: []));
     }
 
+    public function testCommitAfterObserverFailureDoesNotSkipOtherProducts(): void
+    {
+        $recorded = [];
+        $eventManager = $this->createMock(EventManager::class);
+        $eventManager->method('dispatch')->willReturnCallback(
+            function (string $name, array $data = []) use (&$recorded): void {
+                if ($name !== 'catalog_product_save_commit_after') {
+                    return;
+                }
+                if ($data['product']->getSku() === 'SKU-BAD') {
+                    throw new \RuntimeException('observer boom');
+                }
+                $recorded[] = $data['product']->getSku();
+            }
+        );
+        $this->logger->expects(self::atLeastOnce())->method('error');
+
+        $dispatcher = new ImportEventDispatcher(
+            $this->productFactory,
+            $eventManager,
+            $this->productEntity,
+            $this->config,
+            $this->logger,
+            false
+        );
+
+        // SKU-BAD is processed first and throws; SKU-GOOD must still fire.
+        $dispatcher->dispatchAfterCommit($this->createContext(['SKU-BAD' => 1, 'SKU-GOOD' => 2], existing: []));
+
+        self::assertContains('SKU-GOOD', $recorded);
+    }
+
     private function newDispatcher(bool $saveAfter = false): ImportEventDispatcher
     {
         return new ImportEventDispatcher(
