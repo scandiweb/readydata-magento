@@ -111,7 +111,7 @@ class ProductEntity
                 $connection->insertOnDuplicate(
                     $table,
                     $chunk,
-                    ['attribute_set_id', 'type_id', 'updated_at']
+                    ['attribute_set_id', 'type_id', 'has_options', 'required_options', 'updated_at']
                 );
             }
         }

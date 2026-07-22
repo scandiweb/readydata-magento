@@ -4,6 +4,7 @@
     <module name="ReadyData_Import">
         <sequence>
             <module name="Magento_Catalog"/>
+            <module name="Magento_ConfigurableProduct"/>
             <module name="Magento_Eav"/>
             <module name="Magento_CatalogInventory"/>
             <module name="Magento_UrlRewrite"/>

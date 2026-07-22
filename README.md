@@ -105,6 +105,45 @@ untouched; `[]` removes them all.
   escaped segment (`"Default Category/\42"`), while a bare `"42"` entry
   stays a numeric ID.
 
+### Configurable products
+
+A `configurable` parent declares its variation axes and children with a
+`configurable` block; the children are ordinary simple/virtual product
+payloads that carry their own option values in `custom_attributes`:
+
+```json
+{
+  "sku": "SHIRT-01",
+  "type_id": "configurable",
+  "attribute_set": "Default",
+  "name": "Example Shirt",
+  "configurable": {
+    "super_attributes": ["color", "size"],
+    "children": ["SHIRT-01-RED-S", "SHIRT-01-RED-M"]
+  }
+}
+```
+
+- `super_attributes` are attribute codes the product varies on; each must be
+  a **global-scope select** attribute. Non-existent or non-conforming codes
+  are skipped with a per-product warning.
+- `children` are the SKUs of the variation products. A child must already
+  exist and be a **simple or virtual** product; unknown or wrong-typed SKUs
+  are skipped with a warning. Children are resolved against the database, so
+  **send children before (or in the same batch as) the parent** — a child
+  scheduled in a later batch is not yet created and will not resolve.
+- Semantics are **replace**, per sub-field: a present `super_attributes` or
+  `children` array (including `[]`) makes that dimension become exactly the
+  resolved set, while an omitted sub-field leaves that dimension untouched.
+  So `{"children": [...]}` updates only the child links and preserves the
+  existing super attributes. `null`/omitted `configurable` leaves the whole
+  structure untouched.
+- **Safety valve** (as with categories): if any super attribute or child
+  fails to resolve, that parent is applied additively — new attributes and
+  links are added, but nothing existing is removed (a warning explains this).
+- The parent's price index is refreshed after linking so it reflects the
+  children's prices.
+
 Response: summary counters (`received`, `created`, `updated`, `failed`,
 `elapsedMs`) plus a per-SKU `results` array with `status` and `messages`.
 Errors are per-product; a failing product does not abort the request.
@@ -119,6 +158,8 @@ Errors are per-product; a failing product does not abort the request.
 - Website assignment (additive; new products default to the default website).
 - Category assignments (replace semantics, paths or IDs, auto-creation of
   missing subtrees — see "Category assignments" above).
+- Configurable products: super attributes + child links (replace semantics,
+  additive safety valve — see "Configurable products" above).
 - Stock: legacy `cataloginventory_stock_item` + MSI `inventory_source_item`
   when MSI is installed.
 - URL rewrites: generates `url_key` from the name when absent, regenerates
@@ -162,7 +203,7 @@ own URL-rewrite and inventory save observers for the duration of the import
 ## Placeholders (registered, disabled)
 
 Media gallery, related/up-sell/cross-sell links,
-configurable structure, tier prices — see
+tier prices — see
 `Model/Processor/*Processor.php` docblocks for the planned scope of each.
 Implement `execute()` and flip `isEnabled()` to activate. Third-party
 steps: implement `ProcessorInterface`, register in `etc/di.xml`

@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 namespace ReadyData\Import\Model\Data;
 
+use ReadyData\Import\Api\Data\ConfigurableDataInterface;
 use ReadyData\Import\Api\Data\ProductInterface;
 use ReadyData\Import\Api\Data\StockDataInterface;
 
@@ -25,6 +26,7 @@ class Product implements ProductInterface
     private ?StockDataInterface $stock = null;
     private ?array $customAttributes = null;
     private ?array $clearAttributes = null;
+    private ?ConfigurableDataInterface $configurable = null;
 
     public function getSku(): string
     {
@@ -177,6 +179,17 @@ class Product implements ProductInterface
     public function setClearAttributes(array $clearAttributes): ProductInterface
     {
         $this->clearAttributes = $clearAttributes;
+        return $this;
+    }
+
+    public function getConfigurable(): ?ConfigurableDataInterface
+    {
+        return $this->configurable;
+    }
+
+    public function setConfigurable(ConfigurableDataInterface $configurable): ProductInterface
+    {
+        $this->configurable = $configurable;
         return $this;
     }
 }

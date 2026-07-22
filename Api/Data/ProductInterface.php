@@ -30,6 +30,7 @@ interface ProductInterface
     public const STOCK = 'stock';
     public const CUSTOM_ATTRIBUTES = 'custom_attributes';
     public const CLEAR_ATTRIBUTES = 'clear_attributes';
+    public const CONFIGURABLE = 'configurable';
 
     /**
      * @return string
@@ -214,4 +215,22 @@ interface ProductInterface
      * @return $this
      */
     public function setClearAttributes(array $clearAttributes): self;
+
+    /**
+     * Configurable-product structure. Set on a "configurable" parent to
+     * declare its variation axes (super attribute codes) and child SKUs:
+     * {"super_attributes": ["color", "size"], "children": ["SKU-RED-S", ...]}.
+     * Children are ordinary simple/virtual product payloads and should be
+     * sent before/with the parent so their rows exist when it is linked.
+     * null/omitted leaves an existing configurable's structure untouched.
+     *
+     * @return \ReadyData\Import\Api\Data\ConfigurableDataInterface|null
+     */
+    public function getConfigurable(): ?ConfigurableDataInterface;
+
+    /**
+     * @param \ReadyData\Import\Api\Data\ConfigurableDataInterface $configurable
+     * @return $this
+     */
+    public function setConfigurable(ConfigurableDataInterface $configurable): self;
 }

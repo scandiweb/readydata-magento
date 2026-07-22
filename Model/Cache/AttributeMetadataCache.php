@@ -17,7 +17,7 @@ class AttributeMetadataCache
 {
     /**
      * @var array<string, array{attribute_id: int, attribute_code: string, backend_type: string,
-     *      frontend_input: string, is_global: int, is_required: int}|null>
+     *      frontend_input: string, frontend_label: string, is_global: int, is_required: int}|null>
      */
     private array $attributesByCode = [];
 
@@ -47,7 +47,7 @@ class AttributeMetadataCache
         $select = $connection->select()
             ->from(
                 ['ea' => $this->resourceConnection->getTableName('eav_attribute')],
-                ['attribute_code', 'attribute_id', 'backend_type', 'frontend_input', 'is_required']
+                ['attribute_code', 'attribute_id', 'backend_type', 'frontend_input', 'frontend_label', 'is_required']
             )
             ->joinLeft(
                 ['cea' => $this->resourceConnection->getTableName('catalog_eav_attribute')],
@@ -66,6 +66,7 @@ class AttributeMetadataCache
                 'attribute_code' => $row['attribute_code'],
                 'backend_type' => $row['backend_type'],
                 'frontend_input' => (string)$row['frontend_input'],
+                'frontend_label' => (string)($row['frontend_label'] ?? ''),
                 'is_global' => (int)($row['is_global'] ?? 1),
                 'is_required' => (int)$row['is_required'],
             ];
@@ -74,7 +75,8 @@ class AttributeMetadataCache
 
     /**
      * @return array{attribute_id: int, attribute_code: string, backend_type: string,
-     *      frontend_input: string, is_global: int, is_required: int}|null null when the attribute does not exist
+     *      frontend_input: string, frontend_label: string, is_global: int, is_required: int}|null
+     *      null when the attribute does not exist
      */
     public function get(string $code): ?array
     {

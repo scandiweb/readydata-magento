@@ -29,6 +29,13 @@ class EntityProcessor implements ProcessorInterface
     private const ALLOWED_TYPES = ['simple', 'virtual', 'downloadable', 'configurable', 'grouped', 'bundle'];
     private const DEFAULT_TYPE = 'simple';
 
+    /**
+     * Types that require an option selection before purchase; they must carry
+     * has_options/required_options = 1 or the storefront treats them as
+     * directly purchasable (a configurable would add to cart with no variant).
+     */
+    private const OPTION_TYPES = ['configurable', 'bundle'];
+
     public function __construct(
         private readonly ProductEntity $productEntity,
         private readonly AttributeMetadataCache $attributeMetadataCache,
@@ -76,12 +83,13 @@ class EntityProcessor implements ProcessorInterface
                 continue;
             }
 
+            $requiresOptions = in_array($typeId, self::OPTION_TYPES, true) ? 1 : 0;
             $row = [
                 'sku' => $sku,
                 'attribute_set_id' => $attributeSetId,
                 'type_id' => $typeId,
-                'has_options' => 0,
-                'required_options' => 0,
+                'has_options' => $requiresOptions,
+                'required_options' => $requiresOptions,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
