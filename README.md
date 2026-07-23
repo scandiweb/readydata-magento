@@ -125,8 +125,14 @@ payloads that carry their own option values in `custom_attributes`:
 ```
 
 - `super_attributes` are attribute codes the product varies on; each must be
-  a **global-scope select** attribute. Non-existent or non-conforming codes
-  are skipped with a per-product warning.
+  a **global-scope select** attribute that **already exists** (the importer
+  never creates attributes — see "Attributes must already exist"). Non-existent
+  or non-conforming codes are skipped with a per-product warning. Beware: if a
+  code is dropped this way, the parent varies on fewer axes than intended, and
+  children that were distinguished only by the dropped axis collapse onto a
+  shared value combination — the DB links them all, but only one shows as an
+  assigned variation. If a configurable ends up with only some of its children
+  visible, check `results[].messages` for a skipped super attribute first.
 - `children` are the SKUs of the variation products. A child must already
   exist and be a **simple or virtual** product; unknown or wrong-typed SKUs
   are skipped with a warning. Children are resolved against the database, so
@@ -211,6 +217,19 @@ steps: implement `ProcessorInterface`, register in `etc/di.xml`
 
 ## Important caveats
 
+- **Attributes must already exist**: the importer resolves attribute codes
+  but never creates the attribute *definition*. An unknown code — whether a
+  `custom_attributes` entry or a configurable `super_attributes` code — is
+  skipped with a per-product warning and its value/axis is simply not written.
+  The only thing auto-created is missing **option values** on existing
+  select/multiselect attributes (config `create_missing_options`, default on).
+  This is deliberate: an attribute definition carries decisions the payload
+  cannot (frontend input, backend type, scope, required/searchable/filterable
+  flags, attribute-set placement), some effectively immutable once data
+  exists, and creating one is a catalog-structure change that belongs in a
+  version-controlled data patch, not a per-batch import. Create the attribute
+  once beforehand (for super attributes: a **global-scope select** added to
+  the product's attribute set).
 - **Bypasses the product model**: plugins/observers on product save do NOT
   run. That is the point, but audit your customizations before adopting.
   Exception: **auto-created categories** are saved through the category
